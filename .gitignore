@@ -7,7 +7,7 @@
 __pycache__/
 __pycache__
 *.pyc
-
+*.pypirc
 # User-specific files
 *.rsuser
 *.suo
