@@ -25,8 +25,11 @@ from __future__ import annotations
 
 from .logger import LogCls
 
+# 版本信息
+__version__ = "0.1.5"
+
 # 创建全局日志实例
 mylog: LogCls = LogCls()
 
 
-__all__ = ["LogCls", "mylog"]
+__all__ = ["LogCls", "__version__", "mylog"]

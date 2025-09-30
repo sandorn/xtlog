@@ -11,6 +11,7 @@
 - 自动日志文件轮转和保留
 - 支持动态设置日志级别
 - 开发环境智能检测
+- 支持自定义日志路径和文件名
 
 Author: sandorn sandorn@live.cn
 Github: http://github.com/sandorn/xtlog
@@ -18,20 +19,21 @@ Github: http://github.com/sandorn/xtlog
 
 from __future__ import annotations
 
-import os
-import sys
 from collections.abc import Callable
 from datetime import datetime
+import os
+import sys
 from threading import RLock
+from typing import Self
 from weakref import WeakValueDictionary
 
 from loguru import logger
 
-from .config import OPTIMIZED_FORMAT
+from .config import LOG_LEVELS, OPTIMIZED_FORMAT
 from .utils import format_record
 
 # 是否为开发环境
-IS_DEV: bool = os.getenv("ENV", "dev").lower() == "dev"
+IS_DEV: bool = os.getenv('ENV', 'dev').lower() == 'dev'
 
 
 class SingletonMixin:
@@ -91,9 +93,18 @@ class SingletonMixin:
     """
 
     _instance_lock: RLock = RLock()  # 使用可重入锁，避免递归调用问题
-    _instances: WeakValueDictionary[type, SingletonMixin] = WeakValueDictionary()
+    _instances: WeakValueDictionary[type, Self] = WeakValueDictionary()
 
-    def __new__(cls: type[SingletonMixin], *args: object, **kwargs: object) -> SingletonMixin:
+    def __new__(
+        cls: type[Self],
+        level: int | str = 10,
+        serialize: bool = False,
+        log_file_rotation_size: str = '16 MB',
+        log_file_retention_days: str = '30 days',
+        log_format: str = OPTIMIZED_FORMAT,
+        log_dir: str | None = None,
+        log_file_name: str | None = None,
+    ) -> Self:
         """实例化处理（带错误日志和双重检查锁）"""
         # 第一次检查（无锁）
         if cls in cls._instances:
@@ -117,97 +128,98 @@ class SingletonMixin:
                 if cls in cls._instances:
                     del cls._instances[cls]
                 # 改进错误处理，记录异常并重新抛出
-                raise RuntimeError(f"SingletonMixin {cls.__name__} __new__ failed: {e}") from e
+                raise RuntimeError(f'SingletonMixin {cls.__name__} __new__ failed: {e}') from e
 
     @classmethod
-    def reset_instance(cls: type[SingletonMixin]) -> None:
+    def reset_instance(cls: type[Self]) -> None:
         """重置单例实例"""
         with cls._instance_lock:
-            cls._instances.pop(cls, None)  # 移除该类的实例引用
+            _ = cls._instances.pop(cls, None)  # 移除该类的实例引用
 
     @classmethod
-    def has_instance(cls: type[SingletonMixin]) -> bool:
+    def has_instance(cls: type[Self]) -> bool:
         """检查是否存在单例实例"""
         return cls in cls._instances
 
     @classmethod
-    def get_instance(cls: type[SingletonMixin]) -> SingletonMixin | None:
+    def get_instance(cls: type[Self]) -> Self | None:
         """获取当前单例实例（不创建新实例）"""
         return cls._instances.get(cls) if cls in cls._instances else None
 
 
 class LogCls(SingletonMixin):
-    """
-    简化版日志配置类 - 利用loguru的record对象获取调用信息
-
-    特性：
-    - 单例模式，确保全局只有一个日志实例
-    - 支持文件和控制台双输出
-    - 自动处理日志文件轮转和保留
-    - 支持callfrom参数扩展功能
-
-    Attributes:
-        DEFAULT_LOG_LEVEL: 默认日志级别
-        current_level: 当前日志级别
-        log_file: 日志文件路径
-        log_file_rotation_size: 日志文件轮转大小
-        log_file_retention_days: 日志文件保留天数
-        log_format: 日志格式
-    """
-
     # 默认日志级别
     DEFAULT_LOG_LEVEL: int = 10  # DEBUG级别
 
     def __init__(
         self,
-        level: int = 10,  # DEBUG级别
+        level: int | str = 10,
         serialize: bool = False,
-        log_file_rotation_size: str = "16 MB",
-        log_file_retention_days: str = "30 days",
+        log_file_rotation_size: str = '16 MB',
+        log_file_retention_days: str = '30 days',
         log_format: str = OPTIMIZED_FORMAT,
+        log_dir: str | None = None,
+        log_file_name: str | None = None,
     ) -> None:
-        """
-        初始化日志配置
-
-        Args:
-            level: 日志级别，默认为10(DEBUG级别)
-            serialize: 是否序列化日志，默认为False
-            log_file_rotation_size: 日志文件轮转大小，默认为16 MB
-            log_file_retention_days: 日志文件保留天数，默认为30天
-            log_format: 日志格式，默认为优化的格式
-        """
-        self.loger = logger
+        # 首先配置基础logger
+        self.loger = logger.bind()
         self.loger.remove()
 
-        # 应用格式处理
-        self.loger = self.loger.patch(format_record)
+        # 应用patch在所有handler添加前
+        self.loger = self.loger.patch(format_record)  # pyright: ignore[reportArgumentType]
+
+        # 转换字符串级别为整数
+        if isinstance(level, str):
+            level = LOG_LEVELS.get(level.upper(), self.DEFAULT_LOG_LEVEL)
 
         # 设置工作目录和日志文件
-        workspace_root: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        logs_dir: str = os.path.join(workspace_root, "logs")
+        if log_dir is None:
+            try:
+                workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            except Exception:
+                workspace_root = os.getcwd()
+
+            logs_dir = os.path.join(workspace_root, 'logs')
+        else:
+            logs_dir = os.path.abspath(log_dir)
+
         os.makedirs(logs_dir, exist_ok=True)
-        log_file: str = os.path.join(logs_dir, f"xt_{datetime.now().strftime('%Y%m%d')}.log")
+
+        if log_file_name is None:
+            log_file_name = f'xt_{datetime.now().strftime("%Y%m%d")}.log'
+
+        log_file = os.path.join(logs_dir, log_file_name)
 
         # 保存配置信息
+        self.log_format = log_format
         self.current_level = level
         self.log_file = log_file
-        self._file_id = None
-        self._console_id = None
-
-        # 保存参数到实例变量
+        self.serialize = serialize
         self.log_file_rotation_size = log_file_rotation_size
         self.log_file_retention_days = log_file_retention_days
-        self.log_format = log_format
 
-        # 文件日志配置
+        self._file_id = None
+        self._console_id = None
+        # 重新设计handler添加方法，确保patch效果不被破坏
+        self._setup_handlers()
+
+    def _setup_handlers(self) -> None:
+        """统一设置handlers，确保patch效果一致"""
+        # 清理现有handlers
+        if self._file_id is not None:
+            self.loger.remove(self._file_id)
+        if self._console_id is not None:
+            self.loger.remove(self._console_id)
+
+        # 文件日志配置 - 使用patch后的logger
         self._file_id = self.loger.add(
-            log_file,
-            rotation=log_file_rotation_size,
-            retention=log_file_retention_days,
-            level=level,
-            encoding="utf-8",
-            format=log_format,
-            serialize=serialize,
+            self.log_file,
+            rotation=self.log_file_rotation_size,
+            retention=self.log_file_retention_days,
+            level=self.current_level,
+            encoding='utf-8',
+            format=self.log_format,
+            serialize=self.serialize,
             backtrace=True,
             diagnose=True,
             catch=True,
@@ -217,9 +229,9 @@ class LogCls(SingletonMixin):
         if IS_DEV:
             self._console_id = self.loger.add(
                 sys.stderr,
-                level=level,
-                format=log_format,
-                serialize=serialize,
+                level=self.current_level,
+                format=self.log_format,
+                serialize=self.serialize,
                 backtrace=True,
                 diagnose=True,
                 catch=True,
@@ -238,7 +250,7 @@ class LogCls(SingletonMixin):
         """
         return [self.loger.info(arg, **kwargs) for arg in args]
 
-    def __getattr__(self, attr: str) -> Callable[..., None]:
+    def __getattr__(self, attr: str) -> Callable[..., object]:
         """
         动态获取属性，支持直接调用loguru的方法
 
@@ -246,66 +258,30 @@ class LogCls(SingletonMixin):
             attr: 属性名
 
         Returns:
-            Callable[..., None]: loguru的对应方法或默认日志函数
+            Callable[..., object]: loguru的对应方法或默认日志函数
         """
-        def fallback_log(*arg: object, **kwargs: object) -> None:
-            """默认的日志函数，用于处理不存在的日志方法"""
-            self.loger.info(*arg, **kwargs)
+
         try:
-            method = getattr(self.loger, attr)
-            if callable(method):
-                # 使用类型转换确保返回类型正确
-                return method  # type: ignore[no-any-return]
-            else:
-                # 如果属性不是可调用的，返回一个默认的日志函数
-                return fallback_log
-        except AttributeError:
-            # 如果属性不存在，返回一个默认的日志函数
-            return fallback_log
+            return getattr(self.loger, attr)
+        except AttributeError as e:
+            raise AttributeError(f"'LogCls' object has no attribute '{attr}'") from e
 
     def set_level(self, level: int | str) -> None:
-        """
-        动态设置日志级别
-
-        Args:
-            level: 日志级别，可以是整数或字符串
-
-        Example:
-            >>> mylog.set_level("DEBUG")  # 设置为DEBUG级别
-            >>> mylog.set_level(30)       # 设置为WARNING级别
-        """
+        """动态设置日志级别"""
         from .config import LOG_LEVELS
 
-        # 转换字符串级别为整数
         if isinstance(level, str):
             level = LOG_LEVELS.get(level.upper(), self.DEFAULT_LOG_LEVEL)
 
         self.current_level = level
+        # 重新设置handlers，保持patch
+        self._setup_handlers()
 
-        # 使用正确的方法更新日志级别
-        if self._file_id is not None:
-            self.loger.remove(self._file_id)
-            self._file_id = self.loger.add(
-                self.log_file,
-                rotation=self.log_file_rotation_size,
-                retention=self.log_file_retention_days,
-                level=level,
-                encoding="utf-8",
-                format=self.log_format,
-                serialize=False,
-                backtrace=True,
-                diagnose=True,
-                catch=True,
-            )
+    def get_logger(self):
+        """
+        获取原始的loguru logger实例
 
-        if self._console_id is not None:
-            self.loger.remove(self._console_id)
-            self._console_id = self.loger.add(
-                sys.stderr,
-                level=level,
-                format=self.log_format,
-                serialize=False,
-                backtrace=True,
-                diagnose=True,
-                catch=True,
-            )
+        Returns:
+            Logger: loguru的logger实例
+        """
+        return self.loger
