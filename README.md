@@ -171,7 +171,7 @@ simple_log = LogCls(log_format=FORMAT_MAP["simple"])
 
 ### v0.1.5
 
-- 修复了 [set_level](file:///C:/Users/Administrator/Desktop/xtlog/xtlog/logger.py#L273-L282) 方法对 `callfrom` 参数的影响问题
+- 修复了 [set_level](xtlog/logger.py#L273-L282) 方法对 `callfrom` 参数的影响问题
 - 优化了日志级别动态切换时的性能表现
 
 ### v0.1.4
