@@ -40,14 +40,6 @@ mylog.info("这条信息日志不会显示")
 mylog.warning("这条警告日志会显示")
 ```
 
-### 使用callfrom参数
-
-```python
-def my_function():
-    # 使用callfrom参数，指定日志来源为当前函数
-    mylog.info("这条日志来自my_function", callfrom=my_function)
-```
-
 ## 高级用法
 
 ### 自定义日志实例

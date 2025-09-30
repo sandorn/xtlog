@@ -8,14 +8,13 @@
 
 主要特性:
 - 单例模式，确保全局只有一个日志实例
-- 支持callfrom参数扩展功能
 - 自动识别调用位置信息
 - 支持动态设置日志级别
 
 Example:
     >>> from xtlog import mylog
-    >>> mylog.info("这是一条信息日志")
-    >>> mylog.error("这是一条错误日志")
+    >>> mylog.info('这是一条信息日志')
+    >>> mylog.error('这是一条错误日志')
 
 Author: sandorn sandorn@live.cn
 Github: http://github.com/sandorn/xtlog
@@ -24,12 +23,13 @@ Github: http://github.com/sandorn/xtlog
 from __future__ import annotations
 
 from .logger import LogCls
+from .utils import get_function_location
 
 # 版本信息
-__version__ = "0.1.5"
+__version__ = '0.1.7'
 
 # 创建全局日志实例
 mylog: LogCls = LogCls()
 
 
-__all__ = ["LogCls", "__version__", "mylog"]
+__all__ = ['LogCls', '__version__', 'get_function_location', 'mylog']

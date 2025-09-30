@@ -42,29 +42,24 @@ LOG_ICONS: dict[str, str] = {
 
 # 标准日志格式（默认）
 OPTIMIZED_FORMAT: str = (
-    "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-    "<level>{level: <8}</level> <level>{level.icon}</level> | "
-    "<magenta>{process: >6}</magenta>:<yellow>{thread: <6}</yellow> | "
-    "<cyan>{extra[simplified_path]: <35}</cyan> | "
-    "<level>{message}</level>"
+    '<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> <level>{level.icon}</level> | <magenta>{process: >6}</magenta>:<yellow>{thread: <6}</yellow> | <level>{message}</level>'
 )
 
 # 简洁日志格式
-SIMPLE_FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{extra[simplified_path]}</cyan> | <level>{message}</level>"
+SIMPLE_FORMAT: str = '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>'
 
 # 详细日志格式
 DETAILED_FORMAT: str = (
-    "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-    "<level>{level: <8}</level> <level>{level.icon}</level> | "
-    "<magenta>P:{process}</magenta> <yellow>T:{thread}</yellow> | "
-    "<blue>{name}</blue>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
-    "<cyan>{extra[simplified_path]}</cyan> | "
-    "<level>{message}</level>\n"
-    "{exception}"
+    '<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
+    '<level>{level: <8}</level> <level>{level.icon}</level> | '
+    '<magenta>P:{process}</magenta> : <yellow>T:{thread}</yellow> | '
+    '<blue>{name}</blue>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | '
+    '<level>{message}</level>\n'
+    '{exception}'
 )
 
 # JSON格式（用于结构化日志）
-JSON_FORMAT: str = '{{"time": "{time:YYYY-MM-DD HH:mm:ss.SSS}", "level": "{level.name}", "message": "{message}", "path": "{extra[simplified_path]}", "process": {process}, "thread": {thread}}}'
+JSON_FORMAT: str = '{{"time": "{time:YYYY-MM-DD HH:mm:ss.SSS}", "level": "{level.name}", "message": "{message}", "process": {process}, "thread": {thread}}}'
 
 # 环境变量配置
 ENV_CONFIG: dict[str, int | str | None] = {

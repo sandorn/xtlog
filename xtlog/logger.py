@@ -11,7 +11,6 @@
 - 自动日志文件轮转和保留
 - 支持动态设置日志级别
 - 开发环境智能检测
-- 支持自定义日志路径和文件名
 
 Author: sandorn sandorn@live.cn
 Github: http://github.com/sandorn/xtlog
@@ -23,6 +22,7 @@ from collections.abc import Callable
 from datetime import datetime
 import os
 import sys
+import tempfile
 from threading import RLock
 from typing import Self
 from weakref import WeakValueDictionary
@@ -30,7 +30,6 @@ from weakref import WeakValueDictionary
 from loguru import logger
 
 from .config import LOG_LEVELS, OPTIMIZED_FORMAT
-from .utils import format_record
 
 # 是否为开发环境
 IS_DEV: bool = os.getenv('ENV', 'dev').lower() == 'dev'
@@ -165,23 +164,12 @@ class LogCls(SingletonMixin):
         self.loger = logger.bind()
         self.loger.remove()
 
-        # 应用patch在所有handler添加前
-        self.loger = self.loger.patch(format_record)  # pyright: ignore[reportArgumentType]
-
         # 转换字符串级别为整数
         if isinstance(level, str):
             level = LOG_LEVELS.get(level.upper(), self.DEFAULT_LOG_LEVEL)
 
         # 设置工作目录和日志文件
-        if log_dir is None:
-            try:
-                workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            except Exception:
-                workspace_root = os.getcwd()
-
-            logs_dir = os.path.join(workspace_root, 'logs')
-        else:
-            logs_dir = os.path.abspath(log_dir)
+        logs_dir = os.path.join(tempfile.gettempdir(), 'logs') if log_dir is None else os.path.abspath(log_dir)
 
         os.makedirs(logs_dir, exist_ok=True)
 
