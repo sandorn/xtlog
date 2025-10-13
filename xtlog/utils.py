@@ -13,9 +13,10 @@ from __future__ import annotations
 import contextlib
 import inspect
 from collections.abc import Callable
+from typing import Any
 
 
-def get_function_location(func: Callable[..., object]) -> str:
+def get_function_location(func: Callable[..., Any] | None) -> str:
     """
     获取函数的位置信息(文件、行号、函数名)
 
@@ -26,7 +27,7 @@ def get_function_location(func: Callable[..., object]) -> str:
         str: 格式为 "文件路径:行号@函数名 | " 的字符串，用于日志记录
     """
     # 基础检查
-    if not callable(func):
+    if not callable(func) or func is None:
         return 'unknown:0@unknown | '
 
     # 获取原始函数(处理装饰器情况)

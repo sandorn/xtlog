@@ -1,6 +1,8 @@
 CHANGELOG.md
 README.md
 pyproject.toml
+dist/xtlog-0.1.7-py3-none-any.whl
+dist/xtlog-0.1.7.tar.gz
 docs/usage.md
 examples/advanced_usage.py
 xtlog/__init__.py

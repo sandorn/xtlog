@@ -12,17 +12,12 @@ Github: http://github.com/sandorn/xtlog
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
-import os
-import sys
 import time
+from contextlib import contextmanager
 
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-# 导入xtlog
-from xtlog import LogCls, mylog
 from xtlog.config import DETAILED_FORMAT, JSON_FORMAT
+
+from xtlog import LogCls, mylog
 
 
 # 创建一个上下文管理器，用于记录代码块执行时间
