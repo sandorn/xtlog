@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: xtlog
-Version: 0.1.8
+Version: 0.1.9
 Summary: 基于 loguru 的高性能日志库
 Author-email: sandorn <sandorn@live.cn>
 License: MIT

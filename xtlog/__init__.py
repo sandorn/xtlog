@@ -25,9 +25,6 @@ from __future__ import annotations
 from .logger import LogCls
 from .utils import get_function_location
 
-# 版本信息
-__version__ = '0.1.8'
-
 # 创建全局日志实例
 mylog: LogCls = LogCls()
 
