@@ -215,7 +215,7 @@ class LogCls(SingletonMixin):
             )
         except Exception as e:
             # 文件日志失败时，fallback到控制台
-            print(f'文件日志初始化失败: {e}，将使用控制台日志')
+            print(f'文件日志初始化失败: {e},将使用控制台日志')
             self._config['enable_file_logging'] = False
             if not self._config['enable_console_logging']:
                 self._config['enable_console_logging'] = True
@@ -304,7 +304,7 @@ class LogCls(SingletonMixin):
             self._config['enable_file_logging'] = True
             self._reinitialize_logger()
 
-    def get_logger(self) -> logger:
+    def get_logger(self) -> Any:
         """获取原始的loguru logger实例"""
         return self.logger
 
@@ -317,10 +317,7 @@ class LogCls(SingletonMixin):
         log_dir = self._config['log_dir']
         log_file_name = self._config['log_file_name']
 
-        if log_dir is None:
-            logs_dir = os.path.join(tempfile.gettempdir(), 'logs')
-        else:
-            logs_dir = os.path.abspath(log_dir)
+        logs_dir = os.path.join(tempfile.gettempdir(), 'logs') if log_dir is None else os.path.abspath(log_dir)
 
         if log_file_name is None:
             log_file_name = f'xt_{datetime.now().strftime("%Y%m%d")}.log'
