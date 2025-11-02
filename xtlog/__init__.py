@@ -29,4 +29,4 @@ from .utils import get_function_location
 mylog: LogCls = LogCls()
 
 
-__all__ = ['LogCls', '__version__', 'get_function_location', 'mylog']
+__all__ = ['LogCls', 'get_function_location', 'mylog']

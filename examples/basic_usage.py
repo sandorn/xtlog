@@ -81,7 +81,7 @@ def main():
     # 3. 异常处理
     exception_handling()
 
-    print('\nxtlog基本用法演示完成！')
+    print('\nxtlog基本用法演示完成!')
 
 
 if __name__ == '__main__':

@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import sys
 import tempfile
-from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from threading import RLock
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 from weakref import WeakValueDictionary
 
 from loguru import logger
 
 from .config import LOG_LEVELS, OPTIMIZED_FORMAT
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # 是否为开发环境
 IS_DEV: bool = os.getenv('ENV', 'dev').lower() == 'dev'
@@ -24,18 +27,18 @@ class SingletonMixin:
     _instances: WeakValueDictionary[type, Self] = WeakValueDictionary()
 
     def __new__(cls: type[Self], *args: Any, **kwargs: Any) -> Self:
-        """实例化处理（带错误日志和双重检查锁）"""
-        # 第一次检查（无锁）
+        """实例化处理(带错误日志和双重检查锁)"""
+        # 第一次检查(无锁)
         if cls in cls._instances:
             instance = cls._instances[cls]
-            # 如果提供了新参数，可能需要重新初始化
+            # 如果提供了新参数,可能需要重新初始化
             if args or kwargs:
                 instance._reinit_if_needed(*args, **kwargs)
             return instance
 
         # 获取锁
         with cls._instance_lock:
-            # 第二次检查（有锁）
+            # 第二次检查(有锁)
             if cls in cls._instances:
                 instance = cls._instances[cls]
                 if args or kwargs:
@@ -49,17 +52,18 @@ class SingletonMixin:
                 cls._instances[cls] = instance
                 # 调用初始化
                 instance.__init__(*args, **kwargs)
-                return instance
             except Exception as e:
                 # 清理失败的实例
                 if cls in cls._instances:
                     del cls._instances[cls]
-                raise RuntimeError(f'SingletonMixin {cls.__name__} __new__ failed: {e}') from e
+                msg = f'SingletonMixin {cls.__name__} __new__ failed: {e}'
+                raise RuntimeError(msg) from e
+            else:
+                return instance
 
     def _reinit_if_needed(self, *args: Any, **kwargs: Any) -> None:
         """检查是否需要重新初始化"""
         # 子类可以重写这个方法来实现参数变化的重新初始化
-        pass
 
     @classmethod
     def reset_instance(cls: type[Self]) -> None:
@@ -74,7 +78,7 @@ class SingletonMixin:
 
     @classmethod
     def get_instance(cls: type[Self]) -> Self | None:
-        """获取当前单例实例（不创建新实例）"""
+        """获取当前单例实例(不创建新实例)"""
         return cls._instances.get(cls)
 
 
@@ -85,7 +89,7 @@ class LogCls(SingletonMixin):
     - 线程安全的单例模式
     - 支持动态配置更新
     - 自动处理日志轮换和清理
-    - 开发环境与控制台输出，生产环境仅文件输出
+    - 开发环境与控制台输出,生产环境仅文件输出
     - 支持直接调用和属性访问
     """
 
@@ -144,7 +148,7 @@ class LogCls(SingletonMixin):
                 if key in config_keys:
                     new_config[key] = value
 
-            # 如果配置有变化，重新初始化
+            # 如果配置有变化,重新初始化
             if new_config != self._config:
                 self._config = new_config
                 self._reinitialize_logger()
@@ -188,15 +192,15 @@ class LogCls(SingletonMixin):
         log_file_name = self._config['log_file_name']
 
         # 确定日志目录
-        logs_dir = os.path.join(tempfile.gettempdir(), 'logs') if log_dir is None else os.path.abspath(log_dir)
+        logs_dir = pathlib.Path(tempfile.gettempdir()) / 'logs' if log_dir is None else pathlib.Path(log_dir).resolve()
 
-        os.makedirs(logs_dir, exist_ok=True)
+        logs_dir.mkdir(exist_ok=True, parents=True)
 
         # 确定日志文件名
         if log_file_name is None:
-            log_file_name = f'xt_{datetime.now().strftime("%Y%m%d")}.log'
+            log_file_name = f'xt_{datetime.now(UTC).strftime("%Y%m%d")}.log'
 
-        log_file = os.path.join(logs_dir, log_file_name)
+        log_file = str(logs_dir / log_file_name)
 
         # 添加文件处理器
         try:
@@ -211,10 +215,10 @@ class LogCls(SingletonMixin):
                 backtrace=True,
                 diagnose=True,
                 catch=True,
-                enqueue=True,  # 添加队列支持，避免多线程问题
+                enqueue=True,  # 添加队列支持,避免多线程问题
             )
-        except Exception as e:
-            # 文件日志失败时，fallback到控制台
+        except (PermissionError, FileNotFoundError) as e:
+            # 文件日志失败时,fallback到控制台
             print(f'文件日志初始化失败: {e},将使用控制台日志')
             self._config['enable_file_logging'] = False
             if not self._config['enable_console_logging']:
@@ -234,12 +238,12 @@ class LogCls(SingletonMixin):
                 catch=True,
                 # colorize=True,  # 启用颜色
             )
-        except Exception as e:
+        except (PermissionError, FileNotFoundError) as e:
             print(f'控制台日志初始化失败: {e}')
 
     def __call__(self, *args: Any, **kwargs: Any) -> list[None]:
         """
-        支持实例直接调用，将多个参数作为多条日志记录
+        支持实例直接调用,将多个参数作为多条日志记录
 
         Args:
             *args: 要记录的参数
@@ -259,11 +263,11 @@ class LogCls(SingletonMixin):
         original_method = getattr(self.logger, attr)
 
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            """包装函数，处理多个参数"""
+            """包装函数,处理多个参数"""
             if len(args) > 1:
-                # 如果有多个参数，分别记录
+                # 如果有多个参数,分别记录
                 return [original_method(str(arg), **kwargs) for arg in args]
-            # 单个参数，直接调用原始方法
+            # 单个参数,直接调用原始方法
             return original_method(*args, **kwargs)
 
         return wrapper
@@ -317,9 +321,9 @@ class LogCls(SingletonMixin):
         log_dir = self._config['log_dir']
         log_file_name = self._config['log_file_name']
 
-        logs_dir = os.path.join(tempfile.gettempdir(), 'logs') if log_dir is None else os.path.abspath(log_dir)
+        logs_dir = pathlib.Path(tempfile.gettempdir()) / 'logs' if log_dir is None else pathlib.Path(log_dir).resolve()
 
         if log_file_name is None:
-            log_file_name = f'xt_{datetime.now().strftime("%Y%m%d")}.log'
+            log_file_name = f'xt_{datetime.now(UTC).strftime("%Y%m%d")}.log'
 
-        return os.path.join(logs_dir, log_file_name)
+        return str(logs_dir / log_file_name)

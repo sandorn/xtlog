@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import contextlib
 import inspect
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def get_function_location(func: Callable[..., Any] | None) -> str:
@@ -36,7 +38,7 @@ def get_function_location(func: Callable[..., Any] | None) -> str:
         original_func = inspect.unwrap(func)
 
     # 尝试使用__code__属性获取位置信息(最可靠的方法)
-    if hasattr(original_func, "__code__"):
+    if hasattr(original_func, '__code__'):
         code = original_func.__code__
         func_name = getattr(original_func, '__name__', 'unknown')
         return f'{code.co_filename}:{code.co_firstlineno}@{func_name} | '
