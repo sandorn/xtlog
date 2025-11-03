@@ -49,6 +49,7 @@ def get_function_location(func: Callable[..., Any] | None) -> str:
         _source_lines, line_no = inspect.getsourcelines(original_func)
         func_name = getattr(original_func, '__name__', 'unknown')
         return f'{file_path}:{line_no}@{func_name} | '
+
     except Exception:
         # 最后的回退方案
         module_name = getattr(original_func, '__module__', 'unknown') or 'unknown'
