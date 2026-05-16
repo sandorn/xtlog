@@ -18,7 +18,7 @@ Classifier: Programming Language :: Python :: 3.11
 Classifier: Programming Language :: Python :: 3.12
 Classifier: Topic :: Software Development :: Libraries :: Python Modules
 Classifier: Topic :: System :: Logging
-Requires-Python: >=3.8
+Requires-Python: >=3.14
 Description-Content-Type: text/markdown
 Requires-Dist: loguru>=0.7.0
 
